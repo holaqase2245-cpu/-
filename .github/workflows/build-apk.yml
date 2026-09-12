@@ -1,9 +1,8 @@
-name: Build Flutter APK
+name: بناء تطبيق فلاز
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main, master]
+    branches: [الرئيسي, main]
 
 permissions:
   contents: read
@@ -13,37 +12,62 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: الدفع
         uses: actions/checkout@v4
 
-      - name: Extract Hisba project
-        run: unzip -o hisba_github_ready_v2.zip
+      - name: البحث عن ملف المشروع
+        run: |
+          echo "الملفات الموجودة:"
+          ls -lah
+          echo "ملفات ZIP:"
+          find . -type f -name "*.zip" -print
 
-      - name: Setup Java
+      - name: استخراج مشروع حسنة
+        run: |
+          ZIP_FILE=$(find . -type f -name "hisba_github_ready_v2.zip" | head -n 1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "لم يتم العثور على hisba_github_ready_v2.zip"
+            exit 1
+          fi
+
+          echo "سيتم استخراج: $ZIP_FILE"
+          mkdir -p hisba_android
+          unzip -o "$ZIP_FILE" -d hisba_android
+
+          echo "محتويات المشروع:"
+          find hisba_android -maxdepth 2 -type f | head -100
+
+      - name: إعداد جافا
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Flutter
+      - name: إعداد Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          cache: true
+          flutter-version: "3.35.0"
 
-      - name: Create Android project
+      - name: إنشاء مشروع أندرويد
         working-directory: hisba_android
-        run: flutter create --platforms=android .
+        run: |
+          if [ ! -f pubspec.yaml ]; then
+            flutter create --platforms=android .
+          fi
 
-      - name: Get dependencies
+      - name: الحصول على التبعيات
         working-directory: hisba_android
-        run: flutter pub get
+        run: |
+          flutter pub get
 
-      - name: Build APK
+      - name: إنشاء ملف APK
         working-directory: hisba_android
-        run: flutter build apk --release
+        run: |
+          flutter build apk --release
 
-      - name: Upload APK
+      - name: تحميل ملف APK
         uses: actions/upload-artifact@v4
         with:
           name: hisba-release-apk
